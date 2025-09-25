@@ -6,7 +6,7 @@ import SuggestedQuestions from './SuggestedQuestions';
 import Message from './Message';
 import ChatInput from './ChatInput';
 import TypingIndicator from './TypingIndicator';
-import { Trees, Settings, MapPin } from 'lucide-react';
+import { Trees, Settings, MapPin, Key, X, CheckCircle, AlertCircle } from 'lucide-react';
 
 const ForestChatbot = ({ userLocation }) => {
   const [apiKey, setApiKey] = useState('');
@@ -16,31 +16,47 @@ const ForestChatbot = ({ userLocation }) => {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [hasShownLocationSuggestion, setHasShownLocationSuggestion] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
   const messagesEndRef = useRef(null);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 Debug - showApiInput state:', showApiInput);
+    console.log('🔍 Debug - isConnected:', isConnected);
+    console.log('🔍 Debug - apiKey length:', apiKey.length);
+  }, [showApiInput, isConnected, apiKey]);
 
   // Initialize chatbot
   useEffect(() => {
+    console.log('🚀 Initializing ForestChatbot...');
+    
     const savedApiKey = storageService.getApiKey();
     const savedHistory = storageService.getChatHistory();
 
     if (savedApiKey) {
+      console.log('📝 Found saved API key');
       setApiKey(savedApiKey);
       groqService.setApiKey(savedApiKey);
       testConnection(savedApiKey);
+    } else {
+      console.log('⚠ No saved API key found');
+      // Show API input immediately if no key is saved
+      setTimeout(() => setShowApiInput(true), 2000);
     }
 
     if (savedHistory.length > 0) {
-      // Convert timestamp strings back to Date objects
+      console.log('💬 Loading chat history:', savedHistory.length, 'messages');
       const historyWithDates = savedHistory.map(msg => ({
         ...msg,
         timestamp: new Date(msg.timestamp)
       }));
       setMessages(historyWithDates);
     } else {
+      console.log('🆕 Starting fresh chat');
       setMessages([{
         id: 1,
         type: 'bot',
-        content: 'Hello! 🌲 I\'m EcoForest AI, your assistant for forest conservation and deforestation awareness!\n\nI can help you learn about:\n• Forest importance and biodiversity 🦋\n• Deforestation causes and solutions 🛡️\n• Forest locations and protected areas 📍\n• Conservation efforts you can support 🌱\n\nWhat would you like to know about forests today?',
+        content: '🌲 *Welcome to EcoForest AI!\n\nI\'m your intelligent assistant for forest conservation and environmental awareness!\n\nWhat I can help you with:\n🌍 Forest importance and biodiversity\n🛡 Deforestation causes and solutions\n📍 Forest locations and protected areas\n🌱 Conservation efforts and how to help\n🗺 Location-based forest information\n\nTo unlock full AI capabilities:* Click the ⚙ Settings button to add your Groq API key!\n\nWhat would you like to learn about forests today?',
         timestamp: new Date()
       }]);
     }

@@ -4,6 +4,7 @@ import json
 import numpy as np
 import requests
 from PIL import Image
+from dotenv import load_dotenv
 from sentinelhub import SHConfig, SentinelHubRequest, MimeType, CRS, BBox, DataCollection
 from web3 import Web3
 
@@ -11,24 +12,35 @@ from web3 import Web3
 # CONFIGURATION
 # ==============================
 
-# Sentinel Hub credentials
-os.environ["SENTINEL_CLIENT_ID"] = "68ea348e-6434-402d-8931-578b3fffc951"
-os.environ["SENTINEL_CLIENT_SECRET"] = "lg3mm9Ugun6kCJO5rtPOjpuPkPvRemvd"
-os.environ["SENTINEL_INSTANCE_ID"] = "16896ddf-57bd-4b4e-9a43-4b25fbf4b642"
+"""Sensitive credentials are loaded from .env if present.
+All integrations are optional. When keys are missing, steps are skipped gracefully.
+"""
+
+# Load .env from backend folder
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+
+# Sentinel Hub credentials (optional)
+SENTINEL_CLIENT_ID = os.getenv("SENTINEL_CLIENT_ID")
+SENTINEL_CLIENT_SECRET = os.getenv("SENTINEL_CLIENT_SECRET")
 
 config = SHConfig()
-config.sh_client_id = os.environ["SENTINEL_CLIENT_ID"]
-config.sh_client_secret = os.environ["SENTINEL_CLIENT_SECRET"]
+if SENTINEL_CLIENT_ID and SENTINEL_CLIENT_SECRET:
+    config.sh_client_id = SENTINEL_CLIENT_ID
+    config.sh_client_secret = SENTINEL_CLIENT_SECRET
+else:
+    # Without credentials, Sentinel requests will be skipped
+    config.sh_client_id = None
+    config.sh_client_secret = None
 
-# Pinata credentials
-PINATA_API_KEY = "ae6c4dcced202dd8f429"
-PINATA_SECRET_API_KEY = "f8603cd4f6c785f96c543bfe393f77b5408deeb7849a1921b54f59496c0f13bb"
+# Pinata credentials (optional)
+PINATA_API_KEY = os.getenv("PINATA_API_KEY")
+PINATA_SECRET_API_KEY = os.getenv("PINATA_SECRET_API_KEY")
 
-# Blockchain / SePolia network
-INFURA_URL = "https://sepolia.infura.io/v3/e711cc2abca045f583be9bc9d24bbdb3"
-PRIVATE_KEY = ""
-ACCOUNT_ADDRESS = "0xae6bd60Cf0Cd7CF00a4116E99a473B9479cd401F"
-CONTRACT_ADDRESS = "0x36E40d7644f24AEe41C61BEDC5234e54E91EdAa9"
+# Blockchain / SePolia network (optional)
+INFURA_URL = os.getenv("INFURA_URL")
+PRIVATE_KEY = os.getenv("PRIVATE_KEY")  # leave empty to disable signing
+ACCOUNT_ADDRESS = os.getenv("ACCOUNT_ADDRESS")
+CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS")
 CONTRACT_ABI = json.loads("""[
     {
         "inputs": [
@@ -45,15 +57,28 @@ CONTRACT_ABI = json.loads("""[
     }
 ]""")
 
-# Connect Web3
-w3 = Web3(Web3.HTTPProvider(INFURA_URL))
-contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=CONTRACT_ABI)
-print("Blockchain connected:", w3.is_connected())
+# Connect Web3 only if URL is provided
+w3 = None
+contract = None
+if INFURA_URL:
+    try:
+        w3 = Web3(Web3.HTTPProvider(INFURA_URL))
+        if w3.is_connected() and CONTRACT_ADDRESS:
+            contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=CONTRACT_ABI)
+        print("Blockchain connected:", w3.is_connected())
+    except Exception as e:
+        print("Blockchain connection error:", e)
+        w3 = None
+        contract = None
 
 # ==============================
 # SENTINEL HUB FETCH
 # ==============================
 def fetch_ndvi_bands(bbox_coords, date):
+    if not (SENTINEL_CLIENT_ID and SENTINEL_CLIENT_SECRET):
+        print("Sentinel credentials missing. Skipping SentinelHub request.")
+        return None
+
     print(f"Fetching data for {date} ...")
     bbox = BBox(bbox=bbox_coords, crs=CRS.WGS84)
 
@@ -111,6 +136,10 @@ def detect_change(ndvi_before, ndvi_after, threshold=0.2):
 # UPLOAD TO PINATA
 # ==============================
 def upload_to_pinata(change_mask, metadata):
+    if not (PINATA_API_KEY and PINATA_SECRET_API_KEY):
+        print("Pinata keys missing. Skipping IPFS upload.")
+        return None
+
     print("Uploading evidence to Pinata...")
     img = Image.fromarray((change_mask * 255).astype('uint8'))
     img.save("change_mask.png")
@@ -149,6 +178,11 @@ def upload_to_pinata(change_mask, metadata):
 # BLOCKCHAIN LOGGING
 # ==============================
 def log_deforestation_event(ipfs_hash, lat, lon, ndvi_change_percent):
+    # Safety checks – skip if required keys are missing
+    if not (w3 and contract and PRIVATE_KEY and ACCOUNT_ADDRESS):
+        print("Blockchain keys or connection missing. Skipping on-chain logging.")
+        return None
+
     timestamp = int(time.time())
     lat_e6 = int(lat * 1e6)
     lon_e6 = int(lon * 1e6)
@@ -181,7 +215,7 @@ def main_pipeline(bbox, date_before, date_after, threshold=0.2):
     after = fetch_ndvi_bands(bbox, date_after)
     if before is None or after is None:
         print("ERROR: Could not fetch Sentinel data for both dates.")
-        return None
+        return {"error": "sentinel_missing_or_failed"}
 
     ndvi_before = compute_ndvi(before)
     ndvi_after = compute_ndvi(after)
@@ -202,7 +236,8 @@ def main_pipeline(bbox, date_before, date_after, threshold=0.2):
         lat_center = (bbox[1] + bbox[3]) / 2
         lon_center = (bbox[0] + bbox[2]) / 2
         receipt = log_deforestation_event(ipfs_hash, lat_center, lon_center, percent_changed)
-        print("Blockchain receipt:", receipt)
+        if receipt:
+            print("Blockchain receipt:", receipt)
 
     return {
         "percent_changed": percent_changed,
@@ -212,8 +247,8 @@ def main_pipeline(bbox, date_before, date_after, threshold=0.2):
 # ==============================
 # RUN PIPELINE
 # ==============================
-if _name_ == "_main_":
+if __name__ == "__main__":
     bbox = [25.0, 45.0, 25.05, 45.05]  # Replace with your AOI
     result = main_pipeline(bbox, "2025-09-01", "2025-09-15", threshold=0.3)
     print("\n=== FINAL RESULT ===")
-    print(result)
+    print(result)

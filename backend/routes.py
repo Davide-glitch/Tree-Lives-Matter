@@ -188,8 +188,9 @@ def create_alert():
         if not user:
             return jsonify({'error': 'User not found'}), 404
             
-        if user.role != 'user':
-            return jsonify({'error': 'Only users can create alerts'}), 403
+        # Allow both regular users and admins to create alerts
+        if user.role not in ['user', 'admin']:
+            return jsonify({'error': 'Only authenticated users can create alerts'}), 403
         
         data = request.get_json()
         

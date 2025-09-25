@@ -35,6 +35,24 @@ What it does:
 
 If you prefer manual steps, see `frontend/README.md` for commands.
 
+## Optional keys (only if you want the full "magic")
+
+The app runs without any external keys: alerts can be created on the map and will appear automatically on the Public/User/Admin pages every ~15 seconds.
+
+If you want the extra monitoring pipeline and AI assistant:
+
+- Backend monitoring (optional): copy `backend/.env.example` to `backend/.env` and fill in values you have:
+  - SENTINEL_CLIENT_ID, SENTINEL_CLIENT_SECRET (Sentinel Hub)
+  - PINATA_API_KEY, PINATA_SECRET_API_KEY (Pinata IPFS)
+  - INFURA_URL, ACCOUNT_ADDRESS, PRIVATE_KEY, CONTRACT_ADDRESS (Ethereum Sepolia)
+  - All are optional. Missing keys simply skip that step; nothing breaks.
+- Frontend AI (optional): open the AI widget, paste your Groq API key (gsk\_...) in the key input; it's stored locally in your browser only.
+
+Where to put keys:
+
+- Backend: `backend/.env` file (never commit it). The script `alert.py` will read it automatically.
+- Frontend (Groq): Use the UI input under the AI section; we do not store it server-side.
+
 ## Do I need Remix or Solidity?
 
 - Remix (the desktop app) and the Solidity compiler are tools for Ethereum smart contract development. This project does not include any Solidity or blockchain components, so you do not need Remix or a Solidity compiler.
