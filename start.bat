@@ -13,14 +13,14 @@ echo [1/6] Setting up environment and backend...
 
 REM Optional: Set blockchain/monitoring keys here (leave empty to skip those features)
 REM Uncomment and fill these lines if you want to enable blockchain logging:
-REM set INFURA_URL=https://sepolia.infura.io/v3/YOUR_INFURA_PROJECT_ID
-REM set ACCOUNT_ADDRESS=0xYourEthereumAddress
-REM set PRIVATE_KEY=your_private_key_here
-REM set CONTRACT_ADDRESS=0xYourContractAddress
-REM set SENTINEL_CLIENT_ID=your_sentinel_client_id
-REM set SENTINEL_CLIENT_SECRET=your_sentinel_client_secret
-REM set PINATA_API_KEY=your_pinata_api_key
-REM set PINATA_SECRET_API_KEY=your_pinata_secret_key
+REM set INFURA_URL="https://sepolia.infura.io/v3/e711cc2abca045f583be9bc9d24bbdb3"
+REM set ACCOUNT_ADDRESS="0xae6bd60Cf0Cd7CF00a4116E99a473B9479cd401F"
+REM set PRIVATE_KEY=""
+REM set CONTRACT_ADDRESS="0x36E40d7644f24AEe41C61BEDC5234e54E91EdAa9"
+REM set SENTINEL_CLIENT_ID="68ea348e-6434-402d-8931-578b3fffc951"
+REM set SENTINEL_CLIENT_SECRET="lg3mm9Ugun6kCJO5rtPOjpuPkPvRemvd"
+REM set PINATA_API_KEY="ae6c4dcced202dd8f429"
+REM set PINATA_SECRET_API_KEY="f8603cd4f6c785f96c543bfe393f77b5408deeb7849a1921b54f59496c0f13bb"
 
 cd backend
 if not exist .venv (

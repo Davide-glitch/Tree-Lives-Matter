@@ -51,6 +51,14 @@ if %errorLevel% neq 0 (
     python --version
     echo.
 )
+echo Installing additional Python packages...
+pip install numpy requests pillow sentinelhub web3 flask_sqlalchemy flask-bcrypt || (
+    echo ERROR: Failed to install required Python packages.
+    pause
+    exit /b 1
+)
+echo ✓ Python packages installed
+echo.
 
 REM Check if Node.js is installed
 node --version >nul 2>&1
